@@ -8,4 +8,5 @@ Guide your adorable frog (🐸) through a challenging landscape of pipes. Tap to
 Play It Now!
 Experience the prompt-engineered magic:
 Play Fraggy Frog Live!
+
 https://hamza-tar93.github.io/fraggy-frog-game/
