@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraggy Frog</title>
+    <!-- Tailwind CSS CDN for responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for a retro-like feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the game elements */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #4CAF50; /* Green background for frog theme */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+            user-select: none; /* Prevent text selection on touch */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px; /* Max width for game area */
+            height: 100vh; /* Full viewport height on mobile */
+            max-height: 700px; /* Max height for game area */
+            background-color: #87CEEB; /* Sky blue background */
+            border: 4px solid #333;
+            overflow: hidden;
+            border-radius: 1rem; /* Rounded corners */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            display: flex; /* Use flex to center content */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Game Screen specific styles */
+        #game-screen {
+            display: none; /* Hidden by default, shown when game starts */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(to bottom, #87CEEB, #A0E0FF); /* Gentle sky gradient */
+        }
+
+        #frog {
+            position: absolute;
+            font-size: 3rem; /* Larger emoji for visibility */
+            left: 20%;
+            top: 50%; /* Initial vertical position */
+            transform: translateY(-50%);
+            z-index: 10;
+            transition: transform 0.05s linear; /* Smooth vertical movement */
+            will-change: transform; /* Optimize for animation */
+        }
+
+        .pipe {
+            position: absolute;
+            width: 60px; /* Width of the pipes */
+            background-color: #4CAF50; /* Green pipes */
+            border: 2px solid #388E3C; /* Darker green border */
+            border-radius: 0.5rem; /* Rounded corners for pipes */
+            will-change: transform; /* Optimize for animation */
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 2.5rem;
+            color: white;
+            text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.7);
+            z-index: 20;
+        }
+
+        /* Landing and Game Over Screens */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent overlay */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            font-family: 'Press Start 2P', cursive;
+            z-index: 30;
+            border-radius: 1rem;
+        }
+
+        .overlay-screen h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.8);
+        }
+
+        .overlay-screen p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+
+        .overlay-button {
+            background-color: #FFD700; /* Gold button */
+            color: #333;
+            padding: 1rem 2.5rem;
+            font-size: 1.5rem;
+            font-family: 'Press Start 2P', cursive;
+            border: none;
+            border-radius: 0.75rem; /* Rounded button */
+            cursor: pointer;
+            box-shadow: 0 6px 0 #B8860B, 0 8px 15px rgba(0, 0, 0, 0.4); /* Button shadow */
+            transition: all 0.1s ease;
+            outline: none;
+        }
+
+        .overlay-button:active {
+            transform: translateY(3px);
+            box-shadow: 0 3px 0 #B8860B, 0 5px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Get Ready Message */
+        #get-ready-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 2rem;
+            color: white;
+            text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.7);
+            z-index: 25;
+            display: none; /* Hidden by default */
+        }
+
+        /* High Score Display */
+        .score-display {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.2rem;
+            color: white;
+            text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.7);
+            margin-top: 1rem;
+        }
+
+        /* Hide game elements when overlay is active */
+        .game-hidden #game-screen {
+            display: none;
+        }
+        .game-active #game-screen {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container" class="game-hidden">
+        <!-- Landing Screen -->
+        <div id="landing-screen" class="overlay-screen">
+            <h1>Fraggy Frog</h1>
+            <p>Tap anywhere or press space to make the frog jump. Navigate through the pipes!</p>
+            <button id="start-button" class="overlay-button">Start Game</button>
+            <p id="landing-high-score" class="score-display">High Score: 0</p>
+        </div>
+
+        <!-- Game Over Screen (initially hidden) -->
+        <div id="game-over-screen" class="overlay-screen hidden">
+            <h1>Game Over!</h1>
+            <p id="final-score">Your Score: 0</p>
+            <p id="gameover-high-score" class="score-display">High Score: 0</p>
+            <button id="restart-button" class="overlay-button">Restart</button>
+        </div>
+
+        <!-- Get Ready Message (initially hidden) -->
+        <div id="get-ready-message" class="hidden">GET READY!</div>
+
+        <!-- Game Screen (initially hidden) -->
+        <div id="game-screen">
+            <div id="score">0</div>
+            <div id="frog">🐸</div>
+            <!-- Pipes will be dynamically added here by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const gameContainer = document.getElementById('game-container');
+        const landingScreen = document.getElementById('landing-screen');
+        const startButton = document.getElementById('start-button');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const restartButton = document.getElementById('restart-button');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const gameoverHighScoreDisplay = document.getElementById('gameover-high-score');
+        const landingHighScoreDisplay = document.getElementById('landing-high-score');
+        const gameScreen = document.getElementById('game-screen');
+        const frog = document.getElementById('frog');
+        const scoreDisplay = document.getElementById('score');
+        const getReadyMessage = document.getElementById('get-ready-message');
+
+        // Game variables
+        let frogY = 50; // Initial frog Y position: Start near the top
+        let velocity = 0; // Frog's vertical velocity
+        const gravity = 0.335; // Gravity strength: Decreased by 33%
+        const jumpStrength = -8; // How high the frog jumps
+        const pipeSpeed = 2; // How fast pipes move
+        const pipeWidth = 60; // Width of the pipes
+        const pipeGap = 194; // Vertical gap between pipes (INCREASED by 10% from 176)
+        const minPipeHeight = 50; // Minimum height for a pipe segment
+        const GROUND_BUFFER = 20; // How many pixels the frog can go below the visible ground before game over
+
+        // Manual hitbox adjustment for the frog emoji (percentage of its visual size)
+        const FROG_HITBOX_SCALE = 0.5; // Frog's effective width/height is 50% of its element size
+
+        let pipes = []; // Array to hold active pipes
+        let score = 0;
+        let highScore = 0; // Variable to store the session's high score
+        let gameActive = false; // True when game is playing (after delay)
+        let animationFrameId; // To store requestAnimationFrame ID for cancellation
+        let pipeGenerationIntervalId; // To store setInterval ID for pipe generation
+        let gameStartDelayTimeoutId; // To store setTimeout ID for start delay
+
+        // --- Game State Management ---
+
+        /**
+         * Initializes the game to its starting state (landing screen).
+         * This function resets all game variables and clears game elements,
+         * but does NOT control which overlay screen is visible.
+         * Screen visibility is handled by startNewGameSequence and endGame.
+         */
+        function initGame() {
+            // Clear any running game loops or intervals
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(pipeGenerationIntervalId);
+            clearTimeout(gameStartDelayTimeoutId);
+
+            // Reset game state variables
+            gameActive = false;
+            score = 0;
+            scoreDisplay.textContent = score;
+            velocity = 0;
+
+            // Reset frog position to the top
+            frogY = 50; // Start near the top
+            frog.style.top = frogY + 'px';
+
+            // Remove all existing pipes from the DOM
+            pipes.forEach(pipePair => {
+                pipePair.top.remove();
+                pipePair.bottom.remove();
+            });
+            pipes = []; // Clear the pipes array
+
+            // Update high score display on landing page
+            landingHighScoreDisplay.textContent = `High Score: ${highScore}`;
+        }
+
+        /**
+         * Starts the game sequence, including the "Get Ready" delay.
+         * This function also handles the transition between screens.
+         */
+        function startNewGameSequence() {
+            // First, reset the game state (clears pipes, resets score, etc.)
+            initGame();
+
+            // Hide all overlay screens
+            landingScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            getReadyMessage.classList.add('hidden'); // Ensure hidden initially
+
+            // Show the game screen
+            gameContainer.classList.remove('game-hidden');
+            gameContainer.classList.add('game-active');
+
+            // Show "Get Ready" message
+            getReadyMessage.classList.remove('hidden');
+
+            // Set a delay before the game truly starts
+            gameStartDelayTimeoutId = setTimeout(() => {
+                getReadyMessage.classList.add('hidden'); // Hide "Get Ready"
+                gameActive = true; // Activate game logic
+                gameLoop(); // Start the game loop
+                pipeGenerationIntervalId = setInterval(createPipe, 2000); // Start pipe generation
+            }, 1500); // 1.5 seconds delay
+        }
+
+        /**
+         * Ends the game, transitions to game over screen.
+         */
+        function endGame() {
+            if (!gameActive) return; // Prevent ending if already ended
+            gameActive = false; // Deactivate game logic
+
+            // Stop all game loops and timers
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(pipeGenerationIntervalId);
+            clearTimeout(gameStartDelayTimeoutId);
+
+            // Update high score if current score is higher
+            if (score > highScore) {
+                highScore = score;
+            }
+
+            // Update final score and show game over screen
+            finalScoreDisplay.textContent = `Your Score: ${score}`;
+            gameoverHighScoreDisplay.textContent = `High Score: ${highScore}`; // Display high score on game over screen
+            gameOverScreen.classList.remove('hidden'); // Make the game over screen visible
+
+            // Hide the game screen
+            gameContainer.classList.remove('game-active');
+            gameContainer.classList.add('game-hidden');
+        }
+
+        // --- Game Logic ---
+
+        /**
+         * Handles the frog's jump action.
+         */
+        function frogJump() {
+            if (gameActive) { // Only allow jumps when game is actively playing
+                velocity = jumpStrength;
+            }
+        }
+
+        /**
+         * The main game loop, updates game state every frame.
+         */
+        function gameLoop() {
+            if (!gameActive) return; // Stop if game is not active
+
+            // Apply gravity to frog's velocity
+            velocity += gravity;
+            frogY += velocity;
+
+            // Update frog's position
+            frog.style.top = frogY + 'px';
+
+            // Get frog's actual bounding box for collision
+            const frogRect = frog.getBoundingClientRect();
+            // Calculate a smaller, more accurate hitbox for the frog
+            const frogHitboxWidth = frogRect.width * FROG_HITBOX_SCALE;
+            const frogHitboxHeight = frogRect.height * FROG_HITBOX_SCALE;
+            const frogHitboxLeft = frogRect.left + (frogRect.width - frogHitboxWidth) / 2;
+            const frogHitboxTop = frogRect.top + (frogRect.height - frogHitboxHeight) / 2;
+            const frogHitboxRight = frogHitboxLeft + frogHitboxWidth;
+            const frogHitboxBottom = frogHitboxTop + frogHitboxHeight;
+
+
+            // Check for collision with top/bottom boundaries
+            // Game over if frog hits the very top, or falls below the ground buffer
+            if (frogY <= 0 || frogY >= gameContainer.offsetHeight - frog.offsetHeight + GROUND_BUFFER) {
+                endGame();
+                return;
+            }
+
+            // Iterate through pipes to move them and check collisions
+            pipes.forEach((pipePair, index) => {
+                const topPipe = pipePair.top;
+                const bottomPipe = pipePair.bottom;
+
+                // Move pipes
+                let pipeX = topPipe.offsetLeft - pipeSpeed;
+                topPipe.style.left = pipeX + 'px';
+                bottomPipe.style.left = pipeX + 'px';
+
+                // Remove pipes once they are off-screen to save memory
+                if (pipeX + pipeWidth < 0) {
+                    topPipe.remove();
+                    bottomPipe.remove();
+                    pipes.splice(index, 1); // Remove from array
+                }
+
+                // Collision detection with pipes
+                const topPipeRect = topPipe.getBoundingClientRect();
+                const bottomPipeRect = bottomPipe.getBoundingClientRect();
+
+                // Check for horizontal overlap between frog's hitbox and pipe's actual width
+                const horizontalOverlap = frogHitboxLeft < topPipeRect.right && frogHitboxRight > topPipeRect.left;
+
+                if (horizontalOverlap) {
+                    // Check for vertical overlap with top pipe or bottom pipe
+                    const verticalOverlapTop = frogHitboxTop < topPipeRect.bottom;
+                    const verticalOverlapBottom = frogHitboxBottom > bottomPipeRect.top;
+
+                    if (verticalOverlapTop || verticalOverlapBottom) {
+                        endGame();
+                        return; // Exit loop early if game over
+                    }
+                }
+
+                // Score increment: if frog's right side has passed the pipe's left side
+                // and it hasn't been scored yet (check against the pipe's original position when created)
+                if (pipeX + pipeWidth < frog.offsetLeft && !pipePair.passed) {
+                    score++;
+                    scoreDisplay.textContent = score;
+                    pipePair.passed = true; // Mark this pipe pair as scored
+                }
+            });
+
+            // Request next animation frame
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        /**
+         * Creates a new pair of pipes (top and bottom) and adds them to the game.
+         */
+        function createPipe() {
+            // Calculate random height for the top pipe
+            // Ensure there's enough space for minPipeHeight at top, minPipeHeight at bottom, and the pipeGap
+            const totalUsableHeight = gameContainer.offsetHeight - pipeGap - (minPipeHeight * 2);
+            // Random height for the top pipe, ensuring it's within bounds and leaves room for the gap and bottom pipe
+            const topPipeHeight = Math.floor(Math.random() * totalUsableHeight) + minPipeHeight;
+            // The bottom pipe fills the remaining space after the top pipe and the gap
+            const bottomPipeHeight = gameContainer.offsetHeight - topPipeHeight - pipeGap;
+
+            // Create top pipe element
+            const topPipe = document.createElement('div');
+            topPipe.classList.add('pipe');
+            topPipe.style.height = topPipeHeight + 'px';
+            topPipe.style.top = '0';
+            topPipe.style.left = gameContainer.offsetWidth + 'px'; // Start off-screen to the right
+
+            // Create bottom pipe element
+            const bottomPipe = document.createElement('div');
+            bottomPipe.classList.add('pipe');
+            bottomPipe.style.height = bottomPipeHeight + 'px';
+            bottomPipe.style.top = (topPipeHeight + pipeGap) + 'px';
+            bottomPipe.style.left = gameContainer.offsetWidth + 'px'; // Start off-screen to the right
+
+            // Append pipes to the game screen
+            gameScreen.appendChild(topPipe);
+            gameScreen.appendChild(bottomPipe);
+
+            // Add to pipes array for tracking
+            pipes.push({ top: topPipe, bottom: bottomPipe, passed: false });
+        }
+
+        // --- Event Listeners ---
+
+        // Start game button on landing screen
+        startButton.addEventListener('click', startNewGameSequence);
+        startButton.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent default touch behavior (like zooming)
+            startNewGameSequence();
+        });
+
+        // Restart button on game over screen
+        restartButton.addEventListener('click', startNewGameSequence);
+        restartButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startNewGameSequence();
+        });
+
+        // Game input: Tap/Click anywhere on the game container or spacebar
+        // These events will trigger frogJump only if gameActive is true.
+        gameContainer.addEventListener('click', frogJump);
+        gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent default touch behavior (like scrolling)
+            frogJump();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (gameActive) {
+                    frogJump();
+                } else if (!landingScreen.classList.contains('hidden') || !gameOverScreen.classList.contains('hidden')) {
+                    // If on landing or game over screen and space is pressed, start/restart game
+                    startNewGameSequence();
+                }
+            }
+        });
+
+        // Initialize the game when the page loads
+        window.onload = () => {
+            initGame(); // Reset game state and update high score display
+            landingScreen.classList.remove('hidden'); // Ensure landing screen is visible on load
+        };
+
+        // Handle window resize to adjust game container height dynamically
+        window.addEventListener('resize', () => {
+            // If the game is not active, reset frog position relative to new container height
+            if (!gameActive) {
+                frogY = 50; // Keep frog at the top
+                frog.style.top = frogY + 'px';
+            }
+        });
+    </script>
+</body>
+</html>
